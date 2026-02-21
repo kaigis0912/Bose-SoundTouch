@@ -20,7 +20,7 @@ async function fetchSpotifyStatus() {
         if (data.accounts && data.accounts.length > 0) {
             header.style.background = '#e6ffed';
             header.style.border = '1px solid #28a745';
-            nameEl.innerText = data.accounts[0].username;
+            nameEl.innerText = data.accounts[0].display_name || data.accounts[0].user_id || 'Linked';
             if (linkBtn) linkBtn.style.display = 'none';
 
             // Show Prime Spotify buttons on all devices
