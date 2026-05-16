@@ -105,6 +105,54 @@ iperf3 -c 192.168.1.1  # If iperf server available
 
 ## 🌐 **Connection Issues**
 
+### ❌ Every cloud source shows `status="UNAVAILABLE"` / can't stream anything
+
+**Symptoms:**
+
+- The speaker's `/sources` (or the soundtouch-cli `source availability` output) lists every cloud-backed source — Spotify, TuneIn, Internet Radio, AirPlay, Amazon, Alexa — as `status="UNAVAILABLE"`.
+- Often only AUX shows `status="READY"`.
+- The speaker can be reached on the LAN (`:8090/info` works) but no Internet streaming source can be selected.
+
+This is a different failure mode from the [`Curl 7` case below](#-speaker-logs-curl-7-http-0-and-aftertouch-sees-no-http-requests): the speaker can reach AfterTouch but doesn't have the account state to authenticate any cloud surface, so every cloud handler 401s itself out.
+
+**Three-step diagnostic checklist** (in order — the cause is almost always one of these):
+
+#### 1. Is `:443` reachable on AfterTouch?
+
+The AfterTouch Settings tab now ships a preflight that flips ✅ / ❌ for whether the speaker can open a TLS handshake to AfterTouch's HTTPS listener. If `:443` is ❌, follow the steps in [HTTPS-SETUP.md → Binding to port 443](HTTPS-SETUP.md#binding-to-port-443).
+
+A failing preflight at this layer typically presents as `Curl 7, http 0` in the speaker's syslog (see the [`Curl 7` entry below](#-speaker-logs-curl-7-http-0-and-aftertouch-sees-no-http-requests) for the focused walkthrough).
+
+#### 2. Does the speaker have a `margeAccountUUID`?
+
+```bash
+curl -s http://<speaker-ip>:8090/info | xmllint --xpath '/info/margeAccountUUID/text()' -
+```
+
+If the element is empty (or you get no output), the speaker has no account token — every cloud surface that requires authentication will 401 itself out. The Migration tab in AfterTouch detects this and renders:
+
+> **Current: ❌ Not paired (factory-reset or never paired) — set an ID to pair as part of Apply**
+
+The Devices list also shows a `⚠ Not paired — re-pair` badge. To resolve, **open the Migration tab**, pick a previous account ID from the dropdown (or click **Generate**), and click **Apply** — same flow as the [factory-reset recovery](#-presets-flash-then-revert-to-select-a-preset-after-a-factory-reset) section below.
+
+#### 3. What does `logread` say while you trigger a failing source?
+
+SSH into the speaker (see [DEVICE-LOGGING.md](../DEVICE-LOGGING.md#1-accessing-system-logs-requires-root)) and capture:
+
+```bash
+logread -f | grep -v '127.0.0.1:'
+```
+
+…while you select a failing source in the SoundTouch app or via `soundtouch-cli`. The lines around the failed attempt usually name the failing host + protocol — TLS handshake error, token fetch 401, missing route, etc. — and that's enough to file an actionable issue.
+
+**Common outcomes:**
+
+- ❌ `:443` → fix HTTPS routing, sources transition to READY on the next refresh.
+- ❌ `margeAccountUUID` empty → run Migration → Apply, sources reappear after `<sourcesUpdated/>` triggers a `/sources` re-sync.
+- Everything looks right but sources still UNAVAILABLE → the `logread` snippet is the next signal; open an issue with it attached.
+
+> **Note on the firmware-internal placeholder sources.** The `<sourceItem source="SPOTIFY" sourceAccount="SpotifyConnectUserName" ...>`, `SpotifyAlexaUserName`, `UPNP/UPnPUserName`, `STORED_MUSIC_MEDIA_RENDERER/StoredMusicUserName`, and `QPLAY/QPlay{1,2}UserName` entries that appear in `/sources` even on a broken or unpaired speaker are *firmware-synthesized*. They show up regardless of AfterTouch's source list — their `status="UNAVAILABLE"` does not indicate an AfterTouch problem. Use the three checks above to diagnose the actual cause.
+
 ### ❌ Speaker logs `Curl 7, http 0` and AfterTouch sees no HTTP requests
 
 **Symptoms:**
@@ -334,6 +382,87 @@ client.SelectAux()
 ```
 
 ---
+
+## 🎶 **Music Service & Preset Issues**
+
+### ❌ Spotify preset fails with "Current content cannot be saved as preset"
+
+**Symptoms:**
+
+You push playback to the speaker via Spotify Connect from the Spotify mobile/desktop app. Audio plays fine. You try to store it as a preset and the CLI reports:
+
+```
+$ soundtouch-cli preset store-current --slot 2
+Storing current content as preset 2 from 192.168.x.y:8090...
+✗ Current content cannot be saved as preset
+  Content: <track name>
+  Source: SPOTIFY
+2026/05/16 09:13:10 current content cannot be preset
+```
+
+…and `soundtouch-cli play now` shows `Source Account: SpotifyConnectUserName`.
+
+**Cause:**
+
+The speaker firmware marks Spotify-Connect-pushed content as **non-presetable** at the NowPlaying layer:
+
+```xml
+<ContentItem source="SPOTIFY" type="DO_NOT_RESUME" ...
+             sourceAccount="SpotifyConnectUserName" isPresetable="false">
+```
+
+That `isPresetable="false"` means the firmware can't independently re-fetch the stream later — it only knows about the session token your phone pushed via the Spotify Connect protocol, which is ephemeral. The speaker refuses the preset *locally*, before any storePreset request reaches AfterTouch's marge.
+
+**Why an OAuth-linked Spotify account changes the answer:**
+
+When AfterTouch has a Spotify OAuth account linked (see [MUSIC-SERVICES.md](MUSIC-SERVICES.md)), the speaker has a *persistent* Spotify source it can use to resolve the content URI later — typically an album/playlist container. With that source available, the firmware rewrites the content item from `DO_NOT_RESUME` to `tracklisturl` at save time, flips `isPresetable` to `true`, and the preset goes through. The recall path then routes through AfterTouch's `/oauth/.../cs3` token broker, which returns a Spotify access token for your linked account.
+
+**Fix:**
+
+1. Set up Spotify OAuth in AfterTouch following [MUSIC-SERVICES.md](MUSIC-SERVICES.md). The high-level model (Spotify Connect vs the OAuth-intercept path, the `streamingoauth.bose.com` DNS rewrite, the token lifecycle) is in [spotify-overview.md](../concepts/spotify-overview.md).
+2. Make sure you're on **v0.84.0 or later** — earlier versions had a custom-OAuth-client bug that caused playback to hang at "Buffering".
+3. Re-prime the speaker (Migration tab → **Prime Spotify**, or wait for the watchdog), then retry the preset save with Connect-pushed playback.
+
+**What this won't fix:**
+
+A Connect-only setup with no OAuth account linked in AfterTouch — that's a firmware-level constraint we can't route around from the server side. The speaker simply doesn't have credentials it can use to replay the content later, so it refuses to preset.
+
+### ❌ TuneIn (or Internet Radio) missing from `/sources` after a factory reset
+
+**Symptoms:**
+
+- The speaker is happily migrated and reachable; most cloud sources work.
+- `curl http://<speaker-ip>:8090/sources` lists AUX, Bluetooth, Spotify Connect placeholders, etc. — but **no `TUNEIN` entry**.
+- `soundtouch-cli source content --source TUNEIN --type stationurl --location /v1/playback/station/<id> --name '<name>'` fails with `1005` (or playing a TuneIn preset silently does nothing).
+- Other devices on the same setup have `TUNEIN` in `/sources` and work fine.
+
+**Cause:**
+
+TuneIn is **not a default source** on a freshly factory-reset SoundTouch. The speaker only adds `TUNEIN` to its `Sources.xml` after the source has been played at least once. Until then, source-selection requests for `TUNEIN` are rejected as invalid.
+
+This is firmware behaviour — independent of AfterTouch — and is why one device can have `TUNEIN` and a sibling device (just reset) can be missing it. The same applies to `LOCAL_INTERNET_RADIO` if the speaker was reset before any LIR content was played.
+
+**Fix:**
+
+Play any TuneIn station once to register the source. Two equivalent paths:
+
+1. **Via the SoundTouch app** — open the app, pick TuneIn, play any station. The source appears in `/sources` after a few seconds.
+2. **Via `soundtouch-cli`** on a device that *does* still have TuneIn registered, or by first registering it with a known-working station:
+
+   ```bash
+   soundtouch-cli --host <speaker-ip> source content \
+     --source TUNEIN --type stationurl \
+     --location /v1/playback/station/s166521 \
+     --name 'SMOOTH JAZZ'
+   ```
+
+   (Station `s166521` is one that works for AfterTouch testing; any valid TuneIn station ID works.)
+
+Once the source plays once, it gets persisted to `/mnt/nv/BoseApp-Persistence/1/Sources.xml` and subsequent TuneIn requests succeed without needing the app.
+
+**For speakers without SSH:**
+
+If `soundtouch-cli source content --source TUNEIN ...` returns `1005` on a reset device that has never had TuneIn, the speaker is refusing because the source isn't registered yet — chicken-and-egg. The SoundTouch app is then the only practical path to register it; we can't write `Sources.xml` directly over telnet on most models.
 
 ## 🔊 **Volume & Audio Issues**
 
