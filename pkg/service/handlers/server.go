@@ -1049,10 +1049,12 @@ func (s *Server) handleDiscoveredDevice(d models.DiscoveredDevice) {
 	if existing := s.findExistingDeviceInfoByDeviceID(deviceID); existing != nil {
 		storedAccount = existing.AccountID
 	}
+
 	accountID := liveInfo.MargeAccountUUID
 	if accountID == "" {
 		accountID = storedAccount
 	}
+
 	if accountID == "" {
 		accountID = "default"
 	}

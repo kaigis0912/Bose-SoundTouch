@@ -63,6 +63,7 @@ func ProbeGet(ctx context.Context, rawURL string, timeout time.Duration) ProbeRe
 		result.Err = err.Error()
 		return result
 	}
+
 	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20)) // 1 MiB cap

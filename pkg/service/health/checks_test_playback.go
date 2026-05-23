@@ -132,6 +132,7 @@ func playDingOnDevice(ds *datastore.DataStore, serverURL string, target Target) 
 	if err != nil {
 		return "", fmt.Errorf("post to speaker: %w", err)
 	}
+
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 300 {

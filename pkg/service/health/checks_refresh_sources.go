@@ -114,6 +114,7 @@ func postSourcesUpdated(ds *datastore.DataStore, target Target) (string, error) 
 	if err != nil {
 		return "", fmt.Errorf("post to speaker: %w", err)
 	}
+
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 300 {
