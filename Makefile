@@ -458,7 +458,7 @@ screenshots:
 # First run: make dev-docs-tidy  (downloads Hextra, writes docs/go.sum)
 # Then:      make dev-docs        (http://localhost:1313, live reload)
 dev-docs:
-	docker compose -f docker-compose.docs.yml up
+	HUGO_PARAMS_GITHASH=$(shell git rev-parse HEAD) docker compose -f docker-compose.docs.yml up
 
 dev-docs-tidy:
 	docker compose -f docker-compose.docs.yml run --rm hugo mod tidy --source docs/

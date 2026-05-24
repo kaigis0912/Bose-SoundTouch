@@ -27,6 +27,8 @@ services:
       # downloads Hextra once.
       - hugo-mod-cache:/root/.cache/hugo_cache
     working_dir: /src
+    environment:
+      - HUGO_PARAMS_GITHASH
 
 volumes:
   hugo-mod-cache:

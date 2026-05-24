@@ -1,6 +1,6 @@
 <div class="hx:flex hx:w-full hx:items-center hx:justify-between hx:text-sm" style="padding-top: 2rem; padding-bottom: 2rem;">
   <a class="hx:inline-flex hx:items-center hx:gap-1.5 hx:text-gray-500 hx:dark:text-gray-400 hx:hover:text-pink-500 hx:dark:hover:text-pink-400 hx:transition-colors"
-     href="{{ "/sponsor" | absURL }}"
+     href="{{ "sponsor" | relURL }}"
      target="_blank"
      rel="noopener noreferrer">
     <span style="color: #ec4899;">
@@ -10,5 +10,8 @@
   </a>
   <span class="hx:text-xs hx:text-gray-500 hx:dark:text-gray-400">
     © 2026 <a class="hx:hover:underline" href="https://github.com/gesellix" target="_blank" rel="noopener noreferrer">Tobias Gesellchen</a>
+    {{- with site.Params.githash }}
+    · <a class="hx:font-mono hx:hover:underline" href="https://github.com/gesellix/Bose-SoundTouch/commit/{{ . }}" target="_blank" rel="noopener noreferrer" title="Built from commit {{ . }}">{{ substr . 0 7 }}</a>
+    {{- end }}
   </span>
 </div>
