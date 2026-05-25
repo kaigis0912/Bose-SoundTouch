@@ -12,7 +12,7 @@ deprecated and is intentionally kept off the visible UI options.
 > **Sources** — community discussion synthesised from
 > [gesellix/Bose-SoundTouch#221](https://github.com/gesellix/Bose-SoundTouch/issues/221),
 > [gesellix/Bose-SoundTouch#236](https://github.com/gesellix/Bose-SoundTouch/issues/236),
-> [scheilch/opencloudtouch#167](https://github.com/scheilch/opencloudtouch/issues/167),
+> [scheilch/opencloudtouch#167](https://github.com/opencloudtouch/opencloudtouch/issues/167),
 > [deborahgu/soundcork#228](https://github.com/deborahgu/soundcork/issues/228),
 > [deborahgu/soundcork#141](https://github.com/deborahgu/soundcork/issues/141),
 > the post-EOS walkthrough PDF in `docs/`,
