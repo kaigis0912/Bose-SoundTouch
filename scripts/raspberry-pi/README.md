@@ -29,6 +29,6 @@ sudo bash install-web.sh
 Pass a version tag as the first argument to pin a specific release:
 
 ```bash
-sudo bash install.sh v0.104.1
-sudo bash install-web.sh v0.104.1
+sudo bash install.sh v0.107.0
+sudo bash install-web.sh v0.107.0
 ```

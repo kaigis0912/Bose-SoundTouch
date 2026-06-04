@@ -10,7 +10,7 @@ set -euo pipefail
 # Examples (override defaults via env vars):
 #
 #   sudo \
-#     VERSION=v0.104.1 \
+#     VERSION=v0.107.0 \
 #     HTTP_PORT=8081 \
 #     bash install-web.sh
 #
@@ -21,7 +21,7 @@ set -euo pipefail
 #     bash install-web.sh
 #
 # Or with a version argument to perform an update:
-#   sudo bash install-web.sh v0.104.1
+#   sudo bash install-web.sh v0.107.0
 #
 # Notes:
 # - This script downloads a release binary for your CPU (auto-detects armv7/arm64/amd64).
@@ -32,7 +32,7 @@ set -euo pipefail
 # - Safe to re-run; it will update the binary, env file, and unit and restart.
 # ==============================================================================
 
-VERSION="${1:-${VERSION:-v0.104.1}}"
+VERSION="${1:-${VERSION:-v0.107.0}}"
 # Normalize version prefix
 if [[ ! "$VERSION" =~ ^v ]]; then
   VERSION="v${VERSION}"
