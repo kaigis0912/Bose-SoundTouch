@@ -84,37 +84,36 @@ export function Controls({ deviceId, status }) {
     }
 
     return html`
-        <div class="controls">
-            <div class="transport">
-                <button class="ctrl-btn" onClick=${() => send('PREV_TRACK')} title="Previous">⏮</button>
-                <button class="ctrl-btn play-btn" onClick=${() => send(isPlaying ? 'PAUSE' : 'PLAY')}>
-                    ${isPlaying ? '⏸' : '▶'}
-                </button>
-                <button class="ctrl-btn" onClick=${() => send('NEXT_TRACK')} title="Next">⏭</button>
-                <button class="ctrl-btn ${isMuted ? 'active' : ''}" onClick=${() => send('MUTE')} title="Mute">
-                    ${IconVolume({ muted: isMuted })}
-                </button>
-                <button class="ctrl-btn ${shuffle === 'SHUFFLE_ON' ? 'active' : ''}" onClick=${toggleShuffle} title="Shuffle">
-                    ${IconShuffle()}
-                </button>
-                <button class="ctrl-btn ${repeat !== 'REPEAT_OFF' ? 'active' : ''}" onClick=${cycleRepeat} title=${repeat === 'REPEAT_ONE' ? 'Repeat one' : repeat === 'REPEAT_ALL' ? 'Repeat all' : 'Repeat'}>
-                    ${IconRepeat({ one: repeat === 'REPEAT_ONE' })}
-                </button>
+        <div class="controls-new">
+            <div class="source-icons-row">
+                <span class="source-label">Source</span>
+                <div class="source-icons">
+                    <div class="source-icon">📶</div>
+                    <div class="source-icon">B</div>
+                </div>
             </div>
-            <div class="volume-row">
-                <span class="volume-icon">${IconVolume({ size: 16 })}</span>
+
+            <div class="volume-control">
+                <span class="vol-icon">${IconVolume({ size: 20 })}</span>
                 <input type="range" class="volume-slider" min="0" max="100"
                     value=${localVolume} onInput=${onVolumeChange} />
-                <span class="volume-value">${localVolume}</span>
             </div>
+
             ${hasBass && html`
-                <div class="bass-row">
-                    <span class="bass-label">Bass</span>
+                <div class="volume-control">
+                    <span class="vol-icon" style="font-size:0.8rem">BASS</span>
                     <input type="range" class="volume-slider" min="-9" max="9"
                         value=${localBass} onInput=${onBassChange} />
-                    <span class="volume-value">${localBass > 0 ? '+' : ''}${localBass}</span>
                 </div>
             `}
+            
+            <div class="transport" style="display:flex; justify-content:center; gap:2rem; margin-bottom: 2rem;">
+                <button class="ctrl-btn" onClick=${() => send('PREV_TRACK')} title="Previous" style="font-size:1.5rem">⏮</button>
+                <button class="ctrl-btn play-btn" onClick=${() => send(isPlaying ? 'PAUSE' : 'PLAY')} style="font-size:2rem">
+                    ${isPlaying ? '⏸' : '▶'}
+                </button>
+                <button class="ctrl-btn" onClick=${() => send('NEXT_TRACK')} title="Next" style="font-size:1.5rem">⏭</button>
+            </div>
         </div>
     `;
 }

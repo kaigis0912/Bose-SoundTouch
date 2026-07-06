@@ -50,71 +50,51 @@ export function Zone({ deviceId, devices }) {
 
     // Devices not already in the zone are available to add
     const zoneIps = new Set([zone.masterIp, ...(zone.members || []).map(m => m.ip)].filter(Boolean));
-    const available = Object.entries(devices || {}).filter(([ip]) => !zoneIps.has(ip));
+    const available = Object.entries(devices || {}).filter(([ip]) => !zoneIps.has(ip) && ip !== deviceId);
 
     const deviceName = (ip) => devices[ip]?.info?.name || ip;
 
+    async function playAll() {
+        for (const [ip] of available) {
+            await api.zoneAdd(deviceId, ip);
+        }
+        refresh();
+    }
+
     return html`
-        <div class="zone-section">
-            <div class="section-title">Zone</div>
-
-            ${zone.isStandalone && html`
-                <div class="zone-row">
-                    <span class="zone-status-label">Standalone</span>
-                    ${available.length > 0 && html`
-                        <button class="btn-secondary zone-btn" onClick=${() => setShowPicker(true)}>+ Group with…</button>
-                    `}
-                </div>
-            `}
-
-            ${zone.isMaster && html`
-                <div class="zone-members">
-                    <div class="zone-member zone-master-row">
-                        <span class="zone-badge master">Master</span>
-                        <span class="zone-member-name">${deviceName(deviceId)}</span>
-                    </div>
-                    ${(zone.members || []).map(m => html`
-                        <div class="zone-member" key=${m.ip}>
-                            <span class="zone-badge slave">Member</span>
-                            <span class="zone-member-name">${m.name || deviceName(m.ip)}</span>
-                            <button class="btn-icon zone-remove" title="Remove from zone"
-                                onClick=${() => removeDevice(m.ip)}>✕</button>
-                        </div>
+        <div class="group-section">
+            ${zone.isSlave ? html`
+                <div class="group-label">Currently playing in group with ${zone.masterName || deviceName(zone.masterIp)}</div>
+                <button class="btn-pill-dark" onClick=${leave}>LEAVE GROUP</button>
+            ` : zone.isMaster ? html`
+                <button class="btn-pill-dark" onClick=${dissolve} style="background: #a00;">DISSOLVE GROUP</button>
+                <div class="group-label">Members:</div>
+                ${(zone.members || []).map(m => html`
+                    <button class="btn-pill-light" key=${m.ip} onClick=${() => removeDevice(m.ip)}>
+                        <span class="plus">−</span>
+                        <span class="name">${m.name || deviceName(m.ip)}</span>
+                    </button>
+                `)}
+                ${available.length > 0 && html`
+                    <div class="group-label" style="margin-top:1rem;">Add more:</div>
+                    ${available.map(([ip, d]) => html`
+                        <button class="btn-pill-light" key=${ip} onClick=${() => addDevice(ip)}>
+                            <span class="plus">+</span>
+                            <span class="name">${d.info?.name || ip}</span>
+                        </button>
                     `)}
-                    <div class="zone-actions">
-                        ${available.length > 0 && html`
-                            <button class="btn-secondary zone-btn" onClick=${() => setShowPicker(true)}>+ Add speaker</button>
-                        `}
-                        <button class="btn-secondary zone-btn" onClick=${dissolve}>Dissolve zone</button>
-                    </div>
-                </div>
-            `}
-
-            ${zone.isSlave && html`
-                <div class="zone-row">
-                    <span class="zone-badge slave">Member</span>
-                    <span class="zone-member-name">Zone: ${zone.masterName || deviceName(zone.masterIp)}</span>
-                    <button class="btn-secondary zone-btn" onClick=${leave}>Leave zone</button>
-                </div>
-            `}
-
-            ${showPicker && html`
-                <div class="overlay" onClick=${() => setShowPicker(false)}>
-                    <div class="device-picker" onClick=${e => e.stopPropagation()}>
-                        <div class="picker-title">Add to zone</div>
-                        <div class="picker-devices">
-                            ${available.map(([ip, d]) => html`
-                                <button class="picker-device-btn" key=${ip} onClick=${() => addDevice(ip)}>
-                                    <div class="picker-device-info">
-                                        <span class="picker-device-name">${d.info?.name || ip}</span>
-                                        <span class="picker-device-ip">${d.info?.ip_address || ip}</span>
-                                    </div>
-                                </button>
-                            `)}
-                        </div>
-                        <button class="btn-secondary picker-cancel" onClick=${() => setShowPicker(false)}>Cancel</button>
-                    </div>
-                </div>
+                `}
+            ` : html`
+                ${available.length > 0 && html`
+                    <button class="btn-pill-dark" onClick=${playAll}>PLAY ALL</button>
+                    <div class="group-label">Or add individually to group:</div>
+                    ${available.map(([ip, d]) => html`
+                        <button class="btn-pill-light" key=${ip} onClick=${() => addDevice(ip)}>
+                            <span class="plus">+</span>
+                            <span class="name">${d.info?.name || ip}</span>
+                        </button>
+                    `)}
+                `}
             `}
         </div>
     `;

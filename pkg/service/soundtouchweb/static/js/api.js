@@ -1,8 +1,17 @@
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
 async function req(url, opts = {}) {
-    const r = await fetch(url, opts);
-    return r.json();
+    try {
+        const r = await fetch(url, opts);
+        if (!r.ok) {
+            console.error(`[API] HTTP Error ${r.status} (${r.statusText}) on ${opts.method || 'GET'} ${url}`);
+            return { success: false, error: `HTTP ${r.status}: ${r.statusText}` };
+        }
+        return await r.json();
+    } catch (err) {
+        console.error(`[API] Network or parsing error on ${opts.method || 'GET'} ${url}:`, err);
+        return { success: false, error: 'Network error or backend unreachable.' };
+    }
 }
 
 export const api = {

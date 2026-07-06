@@ -19,33 +19,119 @@ const html = htm.bind(h);
 
 function DeviceDetail({ deviceId, devices, onBack }) {
     const device = devices[deviceId];
+    if (!device) return null;
 
-    if (!device) {
-        return html`
-            <div class="page-header">
-                <button class="back-btn" onClick=${onBack}>← Back</button>
-            </div>
-            <p>Device not found.</p>
-        `;
-    }
+    const np = device.status?.nowPlaying;
+    const artUrl = np?.art || np?.Art?.URL || '';
+    const stationName = np?.StationName || np?.Track || np?.Source || 'SoundTouch';
+    const sourceName = np?.Source || '';
+
+    // If there is an album art, use it for the blurred background, else generic blue gradient
+    const bgStyle = artUrl ? `background-image: url('${artUrl}')` : `background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)`;
 
     return html`
-        <div class="device-detail">
-            <div class="page-header">
-                <button class="back-btn" onClick=${onBack}>← Back</button>
-                <button class="btn-icon" onClick=${() => api.power(deviceId)} title="Power">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                        <path d="M12 2v8" />
-                        <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
-                    </svg>
-                </button>
+        <div class="device-detail-wrapper">
+            <div class="device-detail-bg" style=${bgStyle}></div>
+            
+            <div class="device-detail-topbar">
+                <div class="station">${stationName}</div>
+                <div class="source">${sourceName}</div>
+                <div class="pause-icon" onClick=${() => api.power(deviceId)}>${np?.PlayStatus === 'PLAY_STATE' ? '⏸' : '▶'}</div>
             </div>
-            <${NowPlaying} nowPlaying=${device.status?.nowPlaying} deviceId=${deviceId} presets=${device.status?.presets} />
-            <${Controls} deviceId=${deviceId} status=${device.status} />
-            <${Presets} deviceId=${deviceId} status=${device.status} />
-            <${Sources} deviceId=${deviceId} status=${device.status} />
-            <${Zone} deviceId=${deviceId} devices=${devices} />
-            <${Recents} deviceId=${deviceId} />
+
+            <div class="device-detail-sheet">
+                <div class="sheet-header">
+                    <button class="back-btn" onClick=${onBack}>˅</button>
+                    <div class="sheet-title">${device.info?.name || 'SoundTouch'}</div>
+                    <button class="power-btn" onClick=${() => api.power(deviceId)}>⏻</button>
+                </div>
+                
+                <${NowPlaying} nowPlaying=${np} deviceId=${deviceId} presets=${device.status?.presets} />
+                <${Controls} deviceId=${deviceId} status=${device.status} />
+                <${Zone} deviceId=${deviceId} devices=${devices} />
+                
+                <${Presets} deviceId=${deviceId} status=${device.status} />
+                <${Sources} deviceId=${deviceId} status=${device.status} />
+                <${Recents} deviceId=${deviceId} />
+            </div>
+        </div>
+    `;
+}
+
+function MusicSources({ onNavigate }) {
+    const sources = [
+        { id: 'tunein', name: 'TuneIn Radio', icon: '📻', desc: 'Suchen und Abspielen von globalen Radiosendern' },
+        { id: 'radiobrowser', name: 'Radio Browser', icon: '🌍', desc: 'Kostenloses, offenes Radio-Verzeichnis mit über 30.000 Sendern' },
+        { id: 'library', name: 'Music Library', icon: '💾', desc: 'Lokale Musikdateien von deinem Server' },
+        { id: 'playurl', name: 'Play URL', icon: '🔗', desc: 'Einen direkten Audio-Stream abspielen' }
+    ];
+
+    return html`
+        <div class="music-sources-container" style="max-width:600px; margin:0 auto; padding: 1rem 1.5rem;">
+            <a href="spotify:" class="btn-pill-dark" style="display:flex; align-items:center; justify-content:center; text-decoration:none; width: 100%; margin: 0 0 2rem 0; background: #1DB954 !important; color: black !important; font-weight: bold; box-shadow: 0 4px 12px rgba(29,185,84,0.3) !important;">
+                Spotify
+            </a>
+            
+            <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1rem;">Weitere Quellen:</div>
+            
+            <div class="device-grid">
+                ${sources.map(src => html`
+                    <button class="device-card" onClick=${() => onNavigate(src.id)} key=${src.id} style="margin-bottom: 0.5rem;">
+                        <div class="device-card-icon" style="font-size:1.5rem; color: var(--text);">${src.icon}</div>
+                        <div class="device-header">
+                            <div class="device-info">
+                                <div class="device-name">${src.name}</div>
+                                <div class="device-type" style="font-size:0.75rem; line-height: 1.3;">${src.desc}</div>
+                            </div>
+                            <div class="device-chevron">›</div>
+                        </div>
+                    </button>
+                `)}
+            </div>
+        </div>
+    `;
+}
+
+function SpotifyInfo({ onBack }) {
+    return html`
+        <div class="spotify-info-page" style="max-width: 600px; margin: 0 auto; text-align: center; padding: 2rem 1.5rem;">
+            <div style="font-size: 5rem; margin-bottom: 1.5rem;">🎵</div>
+            <h2 style="font-weight: 800; margin-bottom: 1rem;">Spotify Connect</h2>
+            <p style="color: var(--text-dim); line-height: 1.6; margin-bottom: 2rem;">
+                Your SoundTouch speakers support Spotify Connect. To play music, simply open the official <strong>Spotify app</strong> on your phone or computer, select the Devices menu, and choose your SoundTouch speaker.
+            </p>
+            <button class="btn-pill-dark" onClick=${onBack} style="width: auto; padding: 0.8rem 2rem;">Back to Sources</button>
+        </div>
+    `;
+}
+
+function PresetsPage({ devices, selectedId, onSelectDevice }) {
+    const deviceEntries = Object.entries(devices);
+    if (deviceEntries.length === 0) {
+        return html`<p style="text-align:center; padding:3rem;">No speakers found. Ensure discovery is running.</p>`;
+    }
+
+    const currentId = selectedId || deviceEntries[0][0];
+    const device = devices[currentId];
+
+    return html`
+        <div class="presets-page-container" style="max-width:600px; margin:0 auto; padding: 1rem 1.5rem;">
+            <div class="device-selector" style="margin-bottom: 1.5rem;">
+                <label style="font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom: 0.5rem;">Select Speaker:</label>
+                <select 
+                    value=${currentId} 
+                    onChange=${(e) => onSelectDevice(e.target.value)}
+                    style="width: 100%; padding: 0.8rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text);"
+                >
+                    ${deviceEntries.map(([id, dev]) => html`
+                        <option value=${id}>${dev.info?.name || id}</option>
+                    `)}
+                </select>
+            </div>
+            
+            ${device ? html`
+                <${Presets} deviceId=${currentId} status=${device.status} />
+            ` : html`<p>Select a speaker to view presets.</p>`}
         </div>
     `;
 }
@@ -57,30 +143,6 @@ function App() {
     const [toast, setToast] = useState(null);
     const [version, setVersion] = useState(null);
     const [isDiscovering, setIsDiscovering] = useState(false);
-
-    const getPageTitle = () => {
-        if (page === 'devices') return 'Devices';
-        if (page === 'device') {
-            const device = devices[selectedId];
-            const name = device?.info?.name || selectedId || 'Device Detail';
-            const ip = device?.info?.ip_address;
-            if (ip) {
-                return html`
-                    <div class="title-with-subtitle">
-                        <span class="main-title">${name}</span>
-                        <span class="sub-title">${ip}</span>
-                    </div>
-                `;
-            }
-            return name;
-        }
-        if (page === 'tunein') return 'TuneIn';
-        if (page === 'radiobrowser') return 'RadioBrowser';
-        if (page === 'library') return 'Library';
-        if (page === 'playurl') return 'Play URL';
-        if (page === 'tts') return 'TTS';
-        return 'AfterTouch';
-    };
 
     useEffect(() => {
         fetch('/api/control/version')
@@ -124,7 +186,12 @@ function App() {
             }
         };
 
+        ws.onerror = (err) => {
+            console.error('[WebSocket] Connection error. Backend might be unreachable.');
+        };
+
         ws.onclose = () => {
+            console.warn('[WebSocket] Connection closed. Retrying in 5s...');
             reconnectTimer = setTimeout(() => location.reload(), 5000);
         };
 
@@ -155,7 +222,6 @@ function App() {
         if (!confirm(`Remove "${name}"?\n\nThis clears it from AfterTouch. A device still online may reappear after the next discovery scan.`)) {
             return;
         }
-        // Optimistically drop it; the server's devices broadcast reconciles.
         setDevices(prev => {
             const next = { ...prev };
             delete next[id];
@@ -169,70 +235,17 @@ function App() {
         }
     }
 
+    const isSpotifyTab = ['spotify', 'spotify-info', 'tunein', 'radiobrowser', 'library', 'playurl'].includes(page);
+
     return html`
         <div class="app">
-            <nav class="navbar">
-                <a class="brand" href="/?chooser" title="AfterTouch home">
-                    <img src="/app/static/img/logo.svg" alt="AfterTouch" class="nav-logo" />
-                    <div class="brand-text">
-                        <span class="brand-name">AfterTouch</span>
-                        <span class="brand-subtitle">Bose SoundTouch Toolkit</span>
+            ${page !== 'device' ? html`
+                <header class="app-header">
+                    <div class="brand">
+                        <span class="brand-name">ReTouch</span>
                     </div>
-                </a>
-                <div class="page-title">${getPageTitle()}</div>
-                <div class="nav-links">
-                    <a href="#" class="${page === 'devices' || page === 'device' ? 'active' : ''}"
-                        onClick=${(e) => { e.preventDefault(); navigate('devices'); }}
-                        title="Devices"
-                    >
-                        <img src="/app/static/img/speaker-mono.svg" alt="Devices" class="nav-device-icon" />
-                    </a>
-                    <a href="#" class="${page === 'tunein' ? 'active' : ''}"
-                        onClick=${(e) => { e.preventDefault(); navigate('tunein'); }}
-                        title="TuneIn"
-                    >
-                        <img src="/app/static/img/tunein-mono.svg" alt="TuneIn" class="nav-tunein-icon" />
-                    </a>
-                    <a href="#" class="${page === 'radiobrowser' ? 'active' : ''}"
-                        onClick=${(e) => { e.preventDefault(); navigate('radiobrowser'); }}
-                        title="RadioBrowser"
-                    >
-                        <img src="/app/static/img/radiobrowser-mono.svg" alt="RadioBrowser" class="nav-rb-icon" />
-                    </a>
-                    <a href="#" class="${page === 'playurl' ? 'active' : ''}"
-                        onClick=${(e) => { e.preventDefault(); navigate('playurl'); }}
-                        title="Play URL"
-                    >
-                        <img src="/app/static/img/link-mono.svg" alt="Play URL" class="nav-url-icon" />
-                    </a>
-                    <a href="#" class="${page === 'library' ? 'active' : ''}"
-                        onClick=${(e) => { e.preventDefault(); navigate('library'); }}
-                        title="Library"
-                        style="font-size:.75rem;font-weight:600;letter-spacing:.02em"
-                    >Lib</a>
-                    <a href="#" class="${page === 'tts' ? 'active' : ''}"
-                        onClick=${(e) => { e.preventDefault(); navigate('tts'); }}
-                        title="TTS"
-                    >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-                            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-                        </svg>
-                    </a>
-                    <span class="nav-separator">|</span>
-                    <button class="btn-icon" onClick=${discover} title="Discover">
-                        <img src="/app/static/img/knob-mono.svg" alt="Discover" class="nav-discover-icon ${isDiscovering ? 'buzzing' : ''}" />
-                    </button>
-                    <a href="https://gesellix.github.io/Bose-SoundTouch/" target="_blank" rel="noopener" title="Documentation">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-                        </svg>
-                    </a>
-                </div>
-            </nav>
-
+                </header>
+            ` : null}
             <main class="main-content">
                 ${page === 'devices' ? html`
                     <${DeviceList}
@@ -250,30 +263,74 @@ function App() {
                         devices=${devices}
                         onBack=${() => navigate('devices')}
                     />
+                ` : page === 'spotify' ? html`
+                    <${MusicSources} key="music-sources" onNavigate=${(id) => navigate(id)} />
+                ` : page === 'spotify-info' ? html`
+                    <${SpotifyInfo} key="spotify-info" onBack=${() => navigate('spotify')} />
                 ` : page === 'tunein' ? html`
-                    <${TuneInBrowser} key="tunein-browser" devices=${devices} />
+                    <div>
+                        <button class="btn-pill-light" onClick=${() => navigate('spotify')} style="margin: 0 1.5rem 1rem; width: auto; display: inline-flex;">← Back to Sources</button>
+                        <${TuneInBrowser} key="tunein-browser" devices=${devices} />
+                    </div>
                 ` : page === 'radiobrowser' ? html`
-                    <${RadioBrowser} key="radiobrowser-browser" devices=${devices} />
+                    <div>
+                        <button class="btn-pill-light" onClick=${() => navigate('spotify')} style="margin: 0 1.5rem 1rem; width: auto; display: inline-flex;">← Back to Sources</button>
+                        <${RadioBrowser} key="radiobrowser-browser" devices=${devices} />
+                    </div>
+                ` : page === 'library' ? html`
+                    <div>
+                        <button class="btn-pill-light" onClick=${() => navigate('spotify')} style="margin: 0 1.5rem 1rem; width: auto; display: inline-flex;">← Back to Sources</button>
+                        <${Library} key="library" devices=${devices} />
+                    </div>
                 ` : page === 'playurl' ? html`
-                    <${PlayURL} key="play-url" devices=${devices} serverServiceUrl=${version?.service_url || ''} />
+                    <div>
+                        <button class="btn-pill-light" onClick=${() => navigate('spotify')} style="margin: 0 1.5rem 1rem; width: auto; display: inline-flex;">← Back to Sources</button>
+                        <${PlayURL} key="play-url" devices=${devices} serverServiceUrl=${version?.service_url || ''} />
+                    </div>
+                ` : page === 'presets-tab' ? html`
+                    <${PresetsPage} key="presets-page" devices=${devices} selectedId=${selectedId} onSelectDevice=${(id) => setSelectedId(id)} />
                 ` : page === 'tts' ? html`
                     <${TTS} key="tts" devices=${devices} serverServiceUrl=${version?.service_url || ''} />
-                ` : page === 'library' ? html`
-                    <${Library} key="library" devices=${devices} />
                 ` : null}
             </main>
 
-                ${version ? html`
-                    <footer id="footer" key="footer">
-                        <span>
-                            AfterTouch <a href="${version.release_url || version.repo_url}" target="_blank">${version.version}</a>
-                            ${version.commit && version.commit !== 'unknown' ? html`
-                                ${' ('}<a href="${version.commit_url}" target="_blank">${version.commit.substring(0, 7)}</a>${')'}
-                            ` : null}
-                            ${version.date && version.date !== 'unknown' ? html` • ${version.date}` : null}
-                        </span>
-                    </footer>
-                ` : null}
+            <nav class="navbar">
+                <div class="nav-links">
+                    <a href="#" class="${(page === 'devices' || page === 'device') ? 'active' : ''}"
+                        onClick=${(e) => { e.preventDefault(); navigate('devices'); }}
+                    >
+                        <img src="/app/static/img/speaker-mono.svg" alt="" class="nav-device-icon" />
+                    </a>
+                    <a href="#" class="${isSpotifyTab ? 'active' : ''}"
+                        onClick=${(e) => { e.preventDefault(); navigate('spotify'); }}
+                    >
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 18V5l12-2v13"></path>
+                            <circle cx="6" cy="18" r="3"></circle>
+                            <circle cx="18" cy="16" r="3"></circle>
+                        </svg>
+                    </a>
+                    <a href="#" class="${page === 'presets-tab' ? 'active' : ''}"
+                        onClick=${(e) => { e.preventDefault(); navigate('presets-tab'); }}
+                    >
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="7" y="2" width="10" height="20" rx="2" ry="2"></rect>
+                            <line x1="12" y1="6" x2="12" y2="6.01"></line>
+                            <line x1="12" y1="10" x2="12" y2="10.01"></line>
+                            <line x1="12" y1="14" x2="12" y2="14.01"></line>
+                            <circle cx="12" cy="18" r="1"></circle>
+                        </svg>
+                    </a>
+                    <a href="#" class="${page === 'tts' ? 'active' : ''}"
+                        onClick=${(e) => { e.preventDefault(); navigate('tts'); }}
+                    >
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                    </a>
+                </div>
+            </nav>
 
             ${toast ? html`<div class="toast" key="toast">${toast}</div>` : null}
         </div>

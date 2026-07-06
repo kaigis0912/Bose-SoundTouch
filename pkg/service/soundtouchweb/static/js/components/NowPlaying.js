@@ -97,35 +97,23 @@ export function NowPlaying({ nowPlaying, deviceId, presets }) {
         nowPlaying?.TrackID, nowPlaying?.ContentItem?.Location]);
 
     if (!nowPlaying || nowPlaying.Source === 'STANDBY') {
-        return html`<div class="now-playing standby">Standby</div>`;
+        return html`
+            <div class="circular-art-wrap">
+                <div class="circular-art-placeholder">⏾</div>
+            </div>
+        `;
     }
 
-    const title = nowPlaying.Track || nowPlaying.StationName || nowPlaying.Source;
-    const artURL = nowPlaying.Art?.URL;
-    const isBuffering = nowPlaying.PlayStatus === 'BUFFERING_STATE';
+    const artURL = nowPlaying.art || nowPlaying.Art?.URL;
     const total = nowPlaying.Time?.Total ?? 0;
     const pct = total > 0 ? Math.min(100, (position / total) * 100) : 0;
 
     return html`
-        <div class="now-playing">
-            ${artURL && html`<img class="album-art" src=${artURL} alt="" />`}
-            <div class="track-info">
-                <div class="track-title">${title}</div>
-                ${nowPlaying.Artist && html`<div class="track-artist">${nowPlaying.Artist}</div>`}
-                ${nowPlaying.Album && html`<div class="track-album">${nowPlaying.Album}</div>`}
-                <div class="track-meta">
-                    <span class="track-source">${nowPlaying.Source}</span>
-                    ${isBuffering && html`<span class="buffering-badge">Buffering…</span>`}
-                </div>
-                ${total > 0 && html`
-                    <div class="progress-row">
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width:${pct}%"></div>
-                        </div>
-                        <span class="progress-time">${fmt(Math.min(position, total))} / ${fmt(total)}</span>
-                    </div>
-                `}
-            </div>
+        <div class="circular-art-wrap">
+            ${artURL 
+                ? html`<img class="circular-art" src=${artURL} alt="Album Art" />`
+                : html`<div class="circular-art-placeholder">🎵</div>`
+            }
             ${deviceId && html`
                 <${PresetPicker}
                     deviceId=${deviceId}
@@ -134,5 +122,13 @@ export function NowPlaying({ nowPlaying, deviceId, presets }) {
                 />
             `}
         </div>
+        ${total > 0 && html`
+            <div class="progress-row" style="padding: 0 1.5rem; margin-bottom: 1rem;">
+                <div class="progress-bar" style="background:#e0e0e0; height:4px; border-radius:2px; flex:1;">
+                    <div class="progress-fill" style="width:${pct}%; background:#333; height:100%; border-radius:2px;"></div>
+                </div>
+                <span class="progress-time" style="font-size:0.75rem; color:#888; margin-left:1rem;">${fmt(Math.min(position, total))} / ${fmt(total)}</span>
+            </div>
+        `}
     `;
 }
