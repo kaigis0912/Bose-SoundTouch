@@ -39,6 +39,7 @@ function PlayerTab({ deviceId, device }) {
     const serverVol = device?.status?.volume?.ActualVolume ?? 30;
     const [localVol, setLocalVol] = useState(serverVol);
     const [isDragging, setIsDragging] = useState(false);
+    const [bgLogo, setBgLogo] = useState('');
 
     useEffect(() => {
         if (!isDragging) {
@@ -49,11 +50,42 @@ function PlayerTab({ deviceId, device }) {
     if (!device) return html`<div class="v2-empty">Lautsprecher wird verbunden...</div>`;
 
     const np = device.status?.nowPlaying;
+    const stationName = np?.stationName || np?.StationName || np?.ContentItem?.ItemName || np?.itemName || '';
+
+    // Background logo lookup
+    useEffect(() => {
+        if (!stationName) {
+            setBgLogo('');
+            return;
+        }
+        const cacheKey = 'radio-logo-' + stationName.toLowerCase().trim();
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+            setBgLogo(cached);
+            return;
+        }
+
+        // If not in cache, search in background
+        setBgLogo('');
+        api.radioBrowserSearch(stationName).then(resp => {
+            if (resp.success) {
+                const items = flattenSections(resp.data);
+                const match = items.find(item => item.name?.toLowerCase().trim() === stationName.toLowerCase().trim()) || items[0];
+                if (match && match.imageUrl) {
+                    localStorage.setItem(cacheKey, match.imageUrl);
+                    setBgLogo(match.imageUrl);
+                }
+            }
+        }).catch(err => {
+            console.error('[Logo Lookup] Failed', err);
+        });
+    }, [stationName]);
+
     const isPlaying = np?.PlayStatus === 'PLAY_STATE';
     const artist = np?.Artist || np?.artist || '';
     const track = np?.Track || np?.track || np?.StationName || '';
     const cachedLogo = getRadioLogo(np);
-    const art = np?.Art?.URL || np?.art || cachedLogo || '';
+    const art = np?.Art?.URL || np?.art || bgLogo || cachedLogo || '';
     const source = np?.Source || np?.source || '';
     const isRadio = source === 'RADIO_BROWSER' || source === 'TUNEIN';
     const displaySubText = isRadio ? (np?.Track || 'Web Radio') : (artist || source || '—');
