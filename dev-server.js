@@ -172,26 +172,33 @@ const server = http.createServer((req, res) => {
                         res.end(JSON.stringify({ success: false, error: 'Preset slot is empty' }));
                     }
                 } else if (action === 'storepreset') {
-                    // Store preset
-                    const currentNp = devices[id].status.nowPlaying;
-                    if (!devices[id].status.presets) {
-                        devices[id].status.presets = [];
+                    const presetId = parseInt(params.get('id'), 10);
+                    let presetsArr = devices[id].status.presets?.Preset;
+                    if (!presetsArr) {
+                        presetsArr = [];
+                        devices[id].status.presets = { Preset: presetsArr };
                     }
-                    const presetIndex = devices[id].status.presets.findIndex(p => p.id === presetId);
-                    const newPreset = {
-                        id: presetId,
-                        name: currentNp.track || currentNp.stationName || "Radio Station",
-                        source: currentNp.source || "TUNEIN"
+                    const presetIndex = presetsArr.findIndex(p => p.ID == presetId);
+                    
+                    const newItem = {
+                        ID: presetId,
+                        ContentItem: {
+                            Source: devices[id].status.nowPlaying.Source || "TUNEIN",
+                            ItemName: devices[id].status.nowPlaying.Track || "Neuer Sender"
+                        }
                     };
 
                     if (presetIndex !== -1) {
-                        devices[id].status.presets[presetIndex] = newPreset;
+                        presetsArr[presetIndex] = newItem;
                     } else {
-                        devices[id].status.presets.push(newPreset);
+                        presetsArr.push(newItem);
                     }
+                    
+                    devices[id].status.presets.Preset = presetsArr.sort((a, b) => a.ID - b.ID);
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ success: true }));
                     broadcastDevices();
+                    return;
                 } else {
                     res.writeHead(400, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ success: false, error: 'Unknown action' }));
@@ -204,8 +211,15 @@ const server = http.createServer((req, res) => {
                 let body = '';
                 req.on('data', chunk => { body += chunk; });
                 req.on('end', () => {
-                    const playReq = JSON.parse(body);
-                    const name = playReq.ItemName || playReq.name || playReq.Track || "Radio Station";
+                    let playReq = {};
+                    try {
+                        playReq = JSON.parse(body);
+                    } catch (e) {
+                        // Fallback: parse as URL-encoded form data
+                        const params = new URLSearchParams(body);
+                        playReq = Object.fromEntries(params.entries());
+                    }
+                    const name = playReq.name || playReq.ItemName || playReq.Track || "Radio Station";
                     const source = parts[6].toUpperCase();
                     
                     devices[id].status.nowPlaying = {
