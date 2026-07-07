@@ -220,7 +220,7 @@ function PresetsTab({ deviceId, device }) {
                         <div class="v2-preset-card" key=${slot.ID}>
                             <button
                                 class="v2-preset-btn ${isEmpty ? 'empty' : ''} ${isFilling ? 'filling' : ''}"
-                                onClick=${() => !isEmpty && !isFilling && playPreset(slot.ID)}
+                                onClick=${() => !isEmpty && playPreset(slot.ID)}
                                 onMouseDown=${(e) => startPress(slot.ID, e)}
                                 onMouseUp=${cancelPress}
                                 onMouseLeave=${cancelPress}

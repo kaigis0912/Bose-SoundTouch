@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BackHandler, Platform, StatusBar, View, StyleSheet } from 'react-native';
+import { BackHandler, Platform, StatusBar, View, StyleSheet, Linking } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { VolumeManager } from 'react-native-volume-manager';
 
@@ -106,6 +106,17 @@ export default function App() {
         onError={(syntheticEvent) => {
           const { nativeEvent } = syntheticEvent;
           console.warn('WebView error: ', nativeEvent);
+        }}
+        originWhitelist={['*']}
+        onShouldStartLoadWithRequest={(request) => {
+          // Intercept intent:// or spotify:// URLs and pass them to the OS
+          if (request.url.startsWith('intent://') || request.url.startsWith('spotify:')) {
+            Linking.openURL(request.url).catch((err) => {
+              console.warn('Could not open external URL', request.url, err);
+            });
+            return false; // Prevent WebView from trying to load it
+          }
+          return true;
         }}
       />
     </View>
