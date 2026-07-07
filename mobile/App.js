@@ -1,10 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { BackHandler, Platform, StatusBar, View, StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
-import {
-  VolumeManager,
-  useVolumeListener,
-} from 'react-native-volume-manager';
+import { VolumeManager } from 'react-native-volume-manager';
 
 // ── Configuration ──────────────────────────────────────────
 // Change this to your Raspberry Pi's address
@@ -12,22 +9,53 @@ const PI_URL = 'http://192.168.0.179:8000/app';
 
 export default function App() {
   const webViewRef = useRef(null);
+  const lastVol = useRef(null);
 
   // Listen for hardware volume button presses
-  useVolumeListener(({ volume }) => {
-    // Forward volume change to the WebView's JavaScript
-    if (webViewRef.current) {
-      webViewRef.current.injectJavaScript(`
-        (function() {
-          // Dispatch a custom event that our ReTouch app listens for
-          window.dispatchEvent(new CustomEvent('nativeVolumeChange', { 
-            detail: { direction: 'set' } 
-          }));
-        })();
-        true;
-      `);
-    }
-  });
+  useEffect(() => {
+    // Hide the native OS volume UI so we don't show the phone's volume bar
+    VolumeManager.showNativeVolumeUI({ enabled: false });
+
+    const volumeListener = VolumeManager.addVolumeListener((result) => {
+      const newVol = result.volume;
+      let direction = null;
+      
+      if (lastVol.current !== null) {
+        if (newVol > lastVol.current) {
+          direction = 'up';
+        } else if (newVol < lastVol.current) {
+          direction = 'down';
+        }
+      }
+      lastVol.current = newVol;
+
+      if (direction && webViewRef.current) {
+        const keyName = direction === 'up' ? 'VolumeUp' : 'VolumeDown';
+        webViewRef.current.injectJavaScript(`
+          (function() {
+            window.dispatchEvent(new CustomEvent('nativeVolumeChange', { 
+              detail: { key: '${keyName}' } 
+            }));
+          })();
+          true;
+        `);
+      }
+
+      // Hacky workaround: reset volume back away from extremes to keep receiving updates
+      if (newVol >= 1.0) {
+        VolumeManager.setVolume(0.95, { showUI: false });
+        lastVol.current = 0.95;
+      } else if (newVol <= 0.0) {
+        VolumeManager.setVolume(0.05, { showUI: false });
+        lastVol.current = 0.05;
+      }
+    });
+
+    return () => {
+      volumeListener.remove();
+      VolumeManager.showNativeVolumeUI({ enabled: true });
+    };
+  }, []);
 
   // Handle Android back button → go back in WebView history
   useEffect(() => {
@@ -47,10 +75,8 @@ export default function App() {
     (function() {
       // Listen for native volume changes forwarded from React Native
       window.addEventListener('nativeVolumeChange', function(e) {
-        // Find the volume API call — we trigger +5 or -5 based on last direction
-        // Since we can't determine direction from the event alone,
-        // we use a keydown simulation approach instead
-        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'VolumeUp', bubbles: true }));
+        const key = e.detail.key; // 'VolumeUp' or 'VolumeDown'
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: key, bubbles: true }));
       });
 
       // Prevent the WebView from scrolling when not needed
