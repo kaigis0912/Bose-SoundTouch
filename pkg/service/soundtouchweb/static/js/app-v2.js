@@ -24,6 +24,14 @@ function flattenSections(data) {
     );
 }
 
+// ── Helper: get cached radio logo ──
+function getRadioLogo(np) {
+    if (!np) return '';
+    const name = np.stationName || np.StationName || np.ContentItem?.ItemName || np.itemName || '';
+    if (!name) return '';
+    return localStorage.getItem('radio-logo-' + name.toLowerCase().trim()) || '';
+}
+
 // ═══════════════════════════════════════════════════════════
 // Tab 1: Player
 // ═══════════════════════════════════════════════════════════
@@ -44,7 +52,8 @@ function PlayerTab({ deviceId, device }) {
     const isPlaying = np?.PlayStatus === 'PLAY_STATE';
     const artist = np?.Artist || np?.artist || '';
     const track = np?.Track || np?.track || np?.StationName || '';
-    const art = np?.Art?.URL || np?.art || '';
+    const cachedLogo = getRadioLogo(np);
+    const art = np?.Art?.URL || np?.art || cachedLogo || '';
     const source = np?.Source || np?.source || '';
     const isRadio = source === 'RADIO_BROWSER' || source === 'TUNEIN';
     const displaySubText = isRadio ? (np?.Track || 'Web Radio') : (artist || source || '—');
@@ -101,13 +110,22 @@ function SearchTab({ deviceId, device }) {
         const resp = await api.radioBrowserSearch(query);
         setLoading(false);
         if (resp.success) {
-            setResults(flattenSections(resp.data));
+            const items = flattenSections(resp.data);
+            items.forEach(item => {
+                if (item.name && item.imageUrl) {
+                    localStorage.setItem('radio-logo-' + item.name.toLowerCase().trim(), item.imageUrl);
+                }
+            });
+            setResults(items);
         }
     }
 
     async function playStation(item) {
         const play = item._links?.bmx_playback;
         if (!play || !deviceId) return;
+        if (item.name && item.imageUrl) {
+            localStorage.setItem('radio-logo-' + item.name.toLowerCase().trim(), item.imageUrl);
+        }
         setPlayingName(item.name);
         await api.radioBrowserPlay(deviceId, {
             location: play.href,
