@@ -14,25 +14,28 @@ let devices = {
         },
         status: {
             nowPlaying: {
-                playStatus: "PLAY_STATE",
-                artist: "Antigravity",
-                track: "Symphony of Code",
-                album: "AI Creations",
-                art: "https://picsum.photos/300/300"
+                PlayStatus: "PLAY_STATE",
+                Source: "TUNEIN",
+                Artist: "Antigravity",
+                Track: "Symphony of Code",
+                Album: "AI Creations",
+                Art: { URL: "https://picsum.photos/300/300" }
             },
             volume: {
-                targetvolume: 35,
-                actualvolume: 35,
-                muteenabled: false
+                TargetVolume: 35,
+                ActualVolume: 35,
+                MuteEnabled: false
             },
-            presets: [
-                { id: 1, name: "Chill Hits", source: "TUNEIN" },
-                { id: 2, name: "Rock Classics", source: "RADIO_BROWSER" },
-                { id: 3, name: "News Radio", source: "TUNEIN" },
-                { id: 4, name: "Jazz Café", source: "LOCAL" },
-                { id: 5, name: "Synthwave", source: "URL" },
-                { id: 6, name: "Lo-Fi Beats", source: "TUNEIN" }
-            ],
+            presets: {
+                Preset: [
+                    { ID: 1, ContentItem: { ItemName: "Chill Hits", Source: "TUNEIN" } },
+                    { ID: 2, ContentItem: { ItemName: "Rock Classics", Source: "RADIO_BROWSER" } },
+                    { ID: 3, ContentItem: { ItemName: "News Radio", Source: "TUNEIN" } },
+                    { ID: 4, ContentItem: { ItemName: "Jazz Café", Source: "LOCAL" } },
+                    { ID: 5, ContentItem: { ItemName: "Synthwave", Source: "URL" } },
+                    { ID: 6, ContentItem: { ItemName: "Lo-Fi Beats", Source: "TUNEIN" } }
+                ]
+            },
             sources: [
                 { name: "TUNEIN", status: "READY" },
                 { name: "RADIO_BROWSER", status: "READY" },
@@ -48,18 +51,19 @@ let devices = {
         },
         status: {
             nowPlaying: {
-                playStatus: "PAUSE_STATE",
-                artist: "Coffee Maker",
-                track: "Morning Brew",
-                album: "Kitchen Sounds",
-                art: "https://picsum.photos/300/300?random=1"
+                PlayStatus: "PAUSE_STATE",
+                Source: "BLUETOOTH",
+                Artist: "Coffee Maker",
+                Track: "Morning Brew",
+                Album: "Kitchen Sounds",
+                Art: { URL: "https://picsum.photos/300/300?random=1" }
             },
             volume: {
-                targetvolume: 20,
-                actualvolume: 20,
-                muteenabled: false
+                TargetVolume: 20,
+                ActualVolume: 20,
+                MuteEnabled: false
             },
-            presets: [],
+            presets: { Preset: [] },
             sources: [
                 { name: "TUNEIN", status: "READY" },
                 { name: "BLUETOOTH", status: "READY" }
@@ -150,12 +154,12 @@ const server = http.createServer((req, res) => {
 
                 if (action === 'preset') {
                     // Play preset
-                    const preset = (devices[id].status.presets || []).find(p => p.id === presetId);
+                    const preset = (devices[id].status.presets?.Preset || []).find(p => p.ID == presetId);
                     if (preset) {
                         devices[id].status.nowPlaying = {
                             playStatus: "PLAY_STATE",
-                            artist: preset.source,
-                            track: preset.name,
+                            artist: preset.ContentItem.Source,
+                            track: preset.ContentItem.ItemName,
                             album: "Preset " + presetId,
                             art: "https://picsum.photos/300/300?random=" + presetId,
                             source: preset.source
