@@ -119,7 +119,7 @@ function SearchTab({ deviceId, device }) {
 
     return html`
         <div class="v2-search">
-            <a href="intent://#Intent;scheme=spotify;package=com.spotify.music;end;" class="v2-spotify-btn">
+            <a href="https://open.spotify.com" target="_blank" rel="noopener noreferrer" class="v2-spotify-btn">
                 Spotify öffnen
             </a>
 
@@ -187,7 +187,6 @@ function PresetsTab({ deviceId, device }) {
     function startPress(slotId, e) {
         if (!canSave) return;
         if (e.type === 'mousedown' && e.button !== 0) return;
-        e.preventDefault(); // prevent text selection on long press
         didLongPress.current = false;
         setFillingId(slotId);
         timerRef.current = setTimeout(() => {
