@@ -1753,6 +1753,9 @@ body {
     font-weight: 500;
     color: #666666;
     margin-top: 0.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* ══════════════════════════════════════════════════════════════
