@@ -80,6 +80,23 @@ See the [soundtouch-player README](cmd/soundtouch-player/README.md) for usage.
 
 ---
 
+### ReTouch Mobile App
+
+A dedicated companion app built with React Native and Expo that brings the AfterTouch web interface natively to your mobile device. **ReTouch** features hardware volume button integration — allowing you to control speaker volume smoothly even while the app is in the foreground, without showing the native OS volume bar. 
+
+It wraps your local AfterTouch instance in a seamless mobile experience, giving you direct access to presets, media controls, and device settings from your phone or tablet.
+
+<div align="center">
+  <img src="media/retouch-screenshot-1.png" alt="ReTouch Home Screen" width="250" />
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="media/retouch-screenshot-2.png" alt="ReTouch Player View" width="250" />
+</div>
+<br/>
+
+*(Hinweis: Ersetzen Sie die Platzhalter in `media/retouch-screenshot-1.png` und `media/retouch-screenshot-2.png` durch Ihre tatsächlichen Screenshots!)*
+
+---
+
 ### Go library
 
 `pkg/client` provides a Go API for all SoundTouch device endpoints: media control, volume, presets, sources, zones, real-time WebSocket events, and device discovery. Use it to build your own integrations.
